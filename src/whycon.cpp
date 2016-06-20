@@ -35,7 +35,7 @@ void reconfigureCallback(whycon_ros_simple::whycon_rosConfig &config, uint32_t l
 }
 
 //image callback
-void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	//resize image if needed 
 	if (grayImage->bpp != msg->step/msg->width || grayImage->width != msg->width || grayImage->height != msg->height){
