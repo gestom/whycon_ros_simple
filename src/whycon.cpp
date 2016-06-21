@@ -17,7 +17,7 @@ CTransformation *transf;
 
 SSegment currentSegment;
 SSegment lastSegment;
-CRawImage *grayImage;
+CRawImage *image;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
@@ -25,6 +25,7 @@ int  defaultImageHeight = 480;
 int circleDetections = 0;
 int maxCircleDetections = 10;
 float circleDiameter = 0.07;
+bool publishDebug = true;
 
 //parameter reconfiguration
 void reconfigureCallback(whycon_ros_simple::whycon_rosConfig &config, uint32_t level) 
@@ -38,16 +39,16 @@ void reconfigureCallback(whycon_ros_simple::whycon_rosConfig &config, uint32_t l
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	//resize image if needed 
-	if (grayImage->bpp != msg->step/msg->width || grayImage->width != msg->width || grayImage->height != msg->height){
-		delete grayImage;
-		ROS_DEBUG("Readjusting grayImage format from %ix%i %ibpp, to %ix%i %ibpp.",grayImage->width,grayImage->height,grayImage->bpp,msg->width,msg->height,msg->step/msg->width);
-		grayImage = new CRawImage(msg->width,msg->height,msg->step/msg->width);
+	if (image->bpp != msg->step/msg->width || image->width != msg->width || image->height != msg->height){
+		delete image;
+		ROS_INFO("Readjusting image format from %ix%i %ibpp, to %ix%i %ibpp.",image->width,image->height,image->bpp,msg->width,msg->height,msg->step/msg->width);
+		image = new CRawImage(msg->width,msg->height,msg->step/msg->width);
 	}
 
-	memcpy(grayImage->data,(void*)&msg->data[0],msg->step*msg->height);
+	memcpy(image->data,(void*)&msg->data[0],msg->step*msg->height);
 
 	lastSegment = currentSegment;
-	currentSegment = detector->findSegment(grayImage,lastSegment);
+	currentSegment = detector->findSegment(image,lastSegment);
 
 	//if the circle is visible 
 	if (currentSegment.valid)
@@ -60,6 +61,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		ROS_INFO("Circle detected at %.2f %.2f %.3f\n",-o.y,-o.z,o.x);
 		pose_pub.publish(pose);	
 	}
+	//publish resulting image
+	if (publishDebug){
+		memcpy((void*)&msg->data[0],image->data,msg->step*msg->height);
+		imdebug.publish(msg);
+	}
 }
 
 int main(int argc, char** argv)
@@ -67,7 +73,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "whycon");
 	ros::NodeHandle n;
 	image_transport::ImageTransport it(n);
-	grayImage = new CRawImage(defaultImageWidth,defaultImageHeight,4);
+	image = new CRawImage(defaultImageWidth,defaultImageHeight,4);
 	detector = new CCircleDetect(defaultImageWidth,defaultImageHeight);
 
 	//initialize dynamic reconfiguration feedback
@@ -77,8 +83,9 @@ int main(int argc, char** argv)
 	server.setCallback(dynSer);
 
 	transf = new CTransformation(circleDiameter);
-	image_transport::Subscriber subimGray = it.subscribe("/head_xtion/rgb/image_mono", 1, grayImageCallback);
+	image_transport::Subscriber subimGray = it.subscribe("/ardrone/bottom/image_raw", 1, imageCallback);
 	pose_pub = n.advertise<geometry_msgs::PoseStamped>("/circlePosition", 1);
+        imdebug = it.advertise("/circleDetector/processedimage", 1);
 
 	while (ros::ok()){
 		ros::spinOnce();
