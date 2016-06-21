@@ -39,7 +39,7 @@ class CCircleDetect
 		int adjustDimensions(int wi,int he);
 		SSegment findSegment(CRawImage* image, SSegment init);
 		bool examineSegment(CRawImage* image,SSegment *segmen,int ii,float areaRatio);
-		void reconfigure(float ict,float fct,float art,float cdtr,float cdta);
+		void reconfigure(float ict,float fct,float art,float cdtr,float cdta,bool debugI);
 
 		bool changeThreshold();
 		bool debug,draw,drawAll;

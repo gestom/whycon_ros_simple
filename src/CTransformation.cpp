@@ -16,7 +16,20 @@ CTransformation::~CTransformation()
 {
 }
 
-void CTransformation::updateParams(float a,float b, float c, float d)
+void CTransformation::updateRadial(float d1,float d2,float d3,float d4,float d5)
+{
+	if (kc[1]!=d1 || kc[2]!=d2 || kc[3]!=d3 || kc[4]!=d4 || kc[5]!=d5)
+	{
+		kc[0] = 1.0;
+		kc[1] = d1;
+		kc[2] = d2;
+		kc[3] = d3;
+		kc[4] = d4;
+		kc[5] = d5;
+	}
+}
+
+void CTransformation::updateIntrinsic(float a,float b, float c, float d)
 {
 	if (a != cc[0] || cc[1] != b || kc[0] != c ||kc[1] != d){
 		cc[0] = a;

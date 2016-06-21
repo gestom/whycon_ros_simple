@@ -11,6 +11,8 @@
 image_transport::Publisher imdebug;
 ros::Publisher command_pub;
 ros::Publisher pose_pub;
+ros::Subscriber cameraInfo;
+image_transport::Subscriber imageSub;
 
 CCircleDetect *detector;
 CTransformation *transf;
@@ -24,7 +26,7 @@ int  defaultImageHeight = 480;
 
 int circleDetections = 0;
 int maxCircleDetections = 10;
-float circleDiameter = 0.07;
+float circleDiameter = 0.122;
 bool publishDebug = true;
 
 //parameter reconfiguration
@@ -32,7 +34,8 @@ void reconfigureCallback(whycon_ros_simple::whycon_rosConfig &config, uint32_t l
 {
 	ROS_INFO("Reconfigure request: %lf %lf %lf %lf %lf %lf", config.circleDiameter, config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
 	circleDiameter = config.circleDiameter/100.0;
-	detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
+	detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs,config.debug);
+	publishDebug = config.debug;
 }
 
 //image callback
@@ -58,7 +61,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		pose.pose.position.x = -o.y;
 		pose.pose.position.y = -o.z;
 		pose.pose.position.z = o.x;
-		ROS_INFO("Circle detected at %.2f %.2f %.3f\n",-o.y,-o.z,o.x);
+		ROS_INFO("Circle detected at %.2f %.2f %.3f",-o.y,-o.z,o.x);
 		pose_pub.publish(pose);	
 	}
 	//publish resulting image
@@ -66,6 +69,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		memcpy((void*)&msg->data[0],image->data,msg->step*msg->height);
 		imdebug.publish(msg);
 	}
+}
+
+//image calibration parameters callback
+void cameraInfoCallBack(const sensor_msgs::CameraInfo &msg)
+{
+	transf->updateIntrinsic(msg.K[2],msg.K[5],msg.K[0],msg.K[4]);
+	transf->updateRadial(msg.D[0],msg.D[1],msg.D[2],msg.D[3],msg.D[4]);
 }
 
 int main(int argc, char** argv)
@@ -83,7 +93,9 @@ int main(int argc, char** argv)
 	server.setCallback(dynSer);
 
 	transf = new CTransformation(circleDiameter);
-	image_transport::Subscriber subimGray = it.subscribe("/ardrone/bottom/image_raw", 1, imageCallback);
+
+	cameraInfo = n.subscribe("/ardrone/bottom/camera_info", 1,cameraInfoCallBack);
+	imageSub = it.subscribe("/ardrone/bottom/image_raw", 1, imageCallback);
 	pose_pub = n.advertise<geometry_msgs::PoseStamped>("/circlePosition", 1);
         imdebug = it.advertise("/circleDetector/processedimage", 1);
 

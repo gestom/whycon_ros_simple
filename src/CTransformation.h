@@ -29,7 +29,8 @@ class CTransformation
 		~CTransformation();
 
 		void transformXY(float *ix,float *iy);
-		void updateParams(float a,float b, float c, float d);
+		void updateIntrinsic(float a,float b, float c, float d);
+		void updateRadial(float d1,float d2,float d3,float d4,float d5);
 
 		void unbarrel(unsigned char* src,unsigned char* dst);
 		STrackedObject transform(SSegment segment);
